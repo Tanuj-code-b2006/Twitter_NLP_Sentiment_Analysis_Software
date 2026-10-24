@@ -6,8 +6,8 @@ project_name = "src"
 list_of_files = [
 
     f"{project_name}/components/data_ingestion.py",  
-    f"{project_name}/components/data_validation.py",
     f"{project_name}/components/data_transformation.py",
+    f"{project_name}/components/feature_engineering.py",
     f"{project_name}/components/model_trainer.py",
     f"{project_name}/components/model_evaluation.py",
 
