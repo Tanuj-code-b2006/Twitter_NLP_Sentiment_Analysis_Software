@@ -57,16 +57,27 @@ def load_data(path:str)->pd.DataFrame:
         raise
 
 def train_model(X_train: np.ndarray,
-                y_train: np.ndarray)->LinearSVC:
+                y_train: np.ndarray,
+                penalty:str,
+                loss:str,
+                max_iter:int,
+                random_state:int)->LinearSVC:
     try:
-        if X_train[0]!=y_train[0]:
+        if X_train.shape[0]!=y_train.shape[0]:
             raise ValueError("number of samples must be same")
 
         logger.debug("Model Training started...")
-        clf=LinearSVC()
+        clf=clf = LinearSVC(
+            penalty=penalty,
+            loss=loss,
+            max_iter=max_iter,
+            random_state=random_state,
+
+)
         clf.fit(X_train,y_train)
 
         logger.debug("Model Training done...")
+        return clf
     except FileNotFoundError as e:
         logger.error("File not found error occured %s",e)
 
@@ -105,7 +116,11 @@ def main():
 
         clf = train_model(
             x_train,
-            y_train
+            y_train,
+            penalty='l2',
+            loss='hinge',
+            max_iter=5000,
+            random_state=42
         )
 
         model_save_path = "models/model.pkl"
