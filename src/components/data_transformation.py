@@ -3,6 +3,7 @@ import logging
 import os
 import nltk
 import re
+from functools import lru_cache
 from bs4 import BeautifulSoup
 from sklearn.preprocessing import LabelEncoder
 
@@ -24,6 +25,18 @@ console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
+
+
+@lru_cache(maxsize=1)
+def _english_stop_words() -> frozenset[str]:
+    try:
+        return frozenset(nltk.corpus.stopwords.words("english"))
+    except LookupError as error:
+        if not nltk.download("stopwords", quiet=True):
+            raise LookupError(
+                "The NLTK stopwords corpus is missing and could not be downloaded."
+            ) from error
+        return frozenset(nltk.corpus.stopwords.words("english"))
 
 
 def transform_text(text: str) -> str:
@@ -65,11 +78,12 @@ def transform_text(text: str) -> str:
         # Remove extra spaces
         text = re.sub(r'\s+', ' ', text).strip()
 
-        # Tokenization
-        tokens = nltk.word_tokenize(text)
+        # Punctuation is already removed, so whitespace splitting avoids NLTK's
+        # separate punkt_tab data while producing the same tokens.
+        tokens = text.split()
 
         # Stopword removal
-        stop_words = set(nltk.corpus.stopwords.words('english'))
+        stop_words = _english_stop_words()
         tokens = [word for word in tokens if word not in stop_words]
 
         # Stemming

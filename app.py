@@ -425,9 +425,9 @@ if submitted:
             model, vectorizer, class_names = load_artifacts()
         except LookupError as error:
             st.error(
-                "The NLTK language data used by the training pipeline is missing. "
-                "Install the required tokenizer and stopword data, then restart "
-                f"the app. Details: {error}"
+                "The NLTK stopwords data is unavailable. The app attempts to "
+                "download it automatically; check server internet access or install "
+                f"it with `python -m nltk.downloader stopwords`. Details: {error}"
             )
             st.stop()
         except (FileNotFoundError, ValueError) as error:
@@ -438,9 +438,9 @@ if submitted:
             cleaned_text = transform_text(user_text)
         except LookupError as error:
             st.error(
-                "The NLTK language data used by the training pipeline is missing. "
-                "Install the required tokenizer and stopword data, then restart "
-                f"the app. Details: {error}"
+                "The NLTK stopwords data is unavailable. The app attempts to "
+                "download it automatically; check server internet access or install "
+                f"it with `python -m nltk.downloader stopwords`. Details: {error}"
             )
             st.stop()
 
