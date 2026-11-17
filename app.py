@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 from src.components.data_transformation import transform_text
@@ -17,6 +18,7 @@ from src.components.data_transformation import transform_text
 
 PROJECT_DIR = Path(__file__).resolve().parent
 MODEL_PATH = PROJECT_DIR / "models" / "model.pkl"
+DATASET_PATH = PROJECT_DIR / "dataset.csv"
 TRAIN_TEXT_PATH = PROJECT_DIR / "data" / "interim_data" / "train_preprocessed.csv"
 TRAIN_LABEL_PATH = PROJECT_DIR / "data" / "raw_data" / "train.csv"
 
@@ -36,13 +38,48 @@ SENTIMENT_STYLES = {
 }
 
 
+def load_training_split() -> pd.DataFrame:
+    """Recreate the training split from the tracked source dataset."""
+    source_data = pd.read_csv(DATASET_PATH)
+    required_columns = {"ID", "Entity", "Sentiment", "Text"}
+    if not required_columns.issubset(source_data.columns):
+        raise ValueError(
+            f"Expected columns {sorted(required_columns)} in {DATASET_PATH}."
+        )
+
+    source_data = source_data.drop(columns=["ID"])
+    source_data["Combined_Text"] = (
+        source_data["Entity"] + " " + source_data["Text"]
+    )
+    source_data = (
+        source_data.drop(columns=["Entity", "Text"])
+        .dropna(subset=["Combined_Text"])
+        .drop_duplicates()
+    )
+    training_data, _ = train_test_split(
+        source_data,
+        test_size=0.4,
+        random_state=2,
+    )
+    return training_data
+
+
 @st.cache_resource(show_spinner="Loading the sentiment model…")
 def load_artifacts() -> tuple[Any, CountVectorizer, dict[int, str]]:
     """Load the model and recreate the vectorizer using its training corpus."""
     with MODEL_PATH.open("rb") as model_file:
         model = pickle.load(model_file)
 
-    training_text = pd.read_csv(TRAIN_TEXT_PATH)
+    training_source: pd.DataFrame | None = None
+    if TRAIN_TEXT_PATH.is_file():
+        training_text = pd.read_csv(TRAIN_TEXT_PATH)
+    else:
+        training_source = load_training_split()
+        training_text = training_source[["Combined_Text"]].copy()
+        training_text["Combined_Text"] = training_text["Combined_Text"].apply(
+            transform_text
+        )
+
     if "Combined_Text" not in training_text.columns:
         raise ValueError(
             f"Expected a 'Combined_Text' column in {TRAIN_TEXT_PATH}."
@@ -60,7 +97,13 @@ def load_artifacts() -> tuple[Any, CountVectorizer, dict[int, str]]:
             f"{model.n_features_in_} expected)."
         )
 
-    raw_training_data = pd.read_csv(TRAIN_LABEL_PATH)
+    if TRAIN_LABEL_PATH.is_file():
+        raw_training_data = pd.read_csv(TRAIN_LABEL_PATH)
+    else:
+        if training_source is None:
+            training_source = load_training_split()
+        raw_training_data = training_source[["Sentiment"]]
+
     if "Sentiment" not in raw_training_data.columns:
         raise ValueError(
             f"Expected a 'Sentiment' column in {TRAIN_LABEL_PATH}."
@@ -380,6 +423,13 @@ if submitted:
     else:
         try:
             model, vectorizer, class_names = load_artifacts()
+        except LookupError as error:
+            st.error(
+                "The NLTK language data used by the training pipeline is missing. "
+                "Install the required tokenizer and stopword data, then restart "
+                f"the app. Details: {error}"
+            )
+            st.stop()
         except (FileNotFoundError, ValueError) as error:
             st.error(f"The model could not be prepared: {error}")
             st.stop()

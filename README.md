@@ -6,3 +6,8 @@ This repo contains an end to end software for nlp sentiment analysis
 The app entry point is `app.py`. Streamlit Community Cloud installs the runtime
 packages listed in the root `requirements.txt`, including scikit-learn (imported
 as `sklearn` in Python).
+
+The generated `data/` files are not tracked by Git. If the preprocessed training
+file is missing, the app rebuilds the training vocabulary from the tracked
+`dataset.csv`; the light theme and readable text colors are configured in
+`.streamlit/config.toml`.
